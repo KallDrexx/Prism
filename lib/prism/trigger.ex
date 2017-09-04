@@ -17,9 +17,7 @@ defmodule Prism.Trigger do
   @type adopter_state :: any
   @type handler :: {module, arguments}
 
-  @callback init(arguments) :: {:ok, adopter_state}
-  @callback activate(Prism.TriggerContext.t) :: {:ok, adopter_state}
-  @callback deactivate(Prism.TriggerContext.t) :: {:ok, adopter_state}
+  @callback init([handler], arguments) :: {:ok, adopter_state}
 
   defmodule State do
     @moduledoc false
@@ -29,7 +27,11 @@ defmodule Prism.Trigger do
               handlers: []
   end
 
-  def start_link(adopter_module, trigger_arguments, handlers = []) do
+  def start_link([adopter_module, trigger_arguments, handlers]) do
+    start_link(adopter_module, trigger_arguments, handlers)
+  end
+
+  def start_link(adopter_module, trigger_arguments, handlers) do
     GenServer.start_link(__MODULE__, [adopter_module, trigger_arguments, handlers])
   end
 
@@ -43,7 +45,8 @@ defmodule Prism.Trigger do
 
   @doc false
   def init([adopter_module, trigger_arguments, handlers]) do
-    {:ok, adopter_state} = adopter_module.init(trigger_arguments)
+    {:ok, adopter_state} = adopter_module.init(handlers, trigger_arguments)
+
     state = %State{
       adopter_module: adopter_module,
       adopter_state: adopter_state,
@@ -51,30 +54,6 @@ defmodule Prism.Trigger do
     }
 
     {:ok, state}
-  end
-
-  @doc false
-  def handle_cast(:activate, state) do
-    context = %Prism.TriggerContext{
-      adopter_state: state.adopter_state,
-      handlers: state.handlers
-    }
-
-    {:ok, adopter_state} = state.adopter_module.activate(context)
-    state = %{state | adopter_state: adopter_state}
-    {:noreply, state}
-  end
-
-  @doc false
-  def handle_cast(:deactivate, state) do
-    context = %Prism.TriggerContext{
-      adopter_state: state.adopter_state,
-      handlers: state.handlers
-    }
-
-    {:ok, adopter_state} = state.adopter_module.deactivate(context)
-    state = %{state | adopter_state: adopter_state}
-    {:noreply, state}
   end
 
 end

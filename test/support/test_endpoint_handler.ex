@@ -30,4 +30,8 @@ defmodule Support.TestEndpointHandler do
     {:ok, []}
   end
 
+  def handle_message(context, _message) do
+    {:ok, context.state}
+  end
+
 end

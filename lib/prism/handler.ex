@@ -28,6 +28,7 @@ defmodule Prism.Handler do
   @callback init(adopter_args) :: {:ok, adopter_state}
   @callback input_received(HandlerContext.t, input) :: {:ok, adopter_state}
   @callback output_received(HandlerContext.t, output) :: {:ok, adopter_state}
+  @callback handle_message(HandlerContext.t, any) :: {:ok, adopter_state}
 
   defmodule State do
     @moduledoc false
@@ -42,8 +43,8 @@ defmodule Prism.Handler do
     GenServer.start_link(__MODULE__, [parent_pid, adopter_module, adopter_args])
   end
 
-  def register_child(handler_pid, parent_pid) when is_pid(parent_pid) do
-    GenServer.cast(handler_pid, {:register_child, parent_pid})
+  def register_child(parent_pid, handler_pid) when is_pid(handler_pid) do
+    GenServer.cast(parent_pid, {:register_child, handler_pid})
   end
 
   def relay_input(child_pid, input) do
@@ -81,7 +82,7 @@ defmodule Prism.Handler do
       state: state.adopter_state
     }
 
-    {:ok, adopter_state} = state.adopter_module.input_received(context,input)
+    {:ok, adopter_state} = state.adopter_module.input_received(context, input)
     state = %{state | adopter_state: adopter_state}
     {:noreply, state}
   end
@@ -95,6 +96,21 @@ defmodule Prism.Handler do
     }
 
     {:ok, adopter_state} = state.adopter_module.output_received(context,output)
+    state = %{state | adopter_state: adopter_state}
+    {:noreply, state}
+  end
+
+  @doc false
+  def handle_info(message, state) do
+    context = %Prism.HandlerContext{
+      parent_pid: state.parent_pid,
+      child_pid: state.child_pid,
+      state: state.adopter_state
+    }
+
+    test = self()
+
+    {:ok, adopter_state} = state.adopter_module.handle_message(context, message)
     state = %{state | adopter_state: adopter_state}
     {:noreply, state}
   end

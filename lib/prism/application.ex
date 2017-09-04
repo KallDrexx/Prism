@@ -8,6 +8,15 @@ defmodule Prism.Application do
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
+      {Prism.Trigger, [
+        Prism.Triggers.RanchTcpAcceptor,
+        [:test, 1111, [active: :once, packet: :line]],
+          [
+            {Prism.Handlers.ReverseTextHandler, []},
+            {Prism.Handlers.EchoHandler, []}
+          ]
+        ]}
+
       # Starts a worker by calling: Prism.Worker.start_link(arg)
       # {Prism.Worker, arg},
     ]
